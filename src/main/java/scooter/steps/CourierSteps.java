@@ -1,53 +1,49 @@
 package scooter.steps;
 
 import io.qameta.allure.Step;
+import io.restassured.response.ValidatableResponse;
 import scooter.jsons.Courier;
 import scooter.jsons.CourierLogin;
 
-import static java.net.HttpURLConnection.HTTP_CREATED;
 import static java.net.HttpURLConnection.HTTP_OK;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static scooter.rests.CourierRests.*;
 
 public class CourierSteps {
 
     public static Courier courier;
-    public static boolean create;
     public static int id;
     public static CourierLogin courierLogin;
 
     @Step("Создание курьера")
-    public static void createCourier() {
+    public static ValidatableResponse createCourier() {
         // генерируем рандомного курьера
         courier = Courier.random();
         // дёргаем ручку создания
-        create = createCourierRest(courier)
-                .assertThat().statusCode(HTTP_CREATED)
-                .extract().path("ok");
+        return createCourierRest(courier);
     }
 
-    @Step("Проверка, что в ответе ok = true")
-    public static void checkKeyOkEqualsTrue() {
-        assertTrue(create);
+    @Step("Проверка статус кода")
+    public static void checkStatusCode(ValidatableResponse response, int statusCode) {
+        response.assertThat().statusCode(statusCode);
+    }
+
+    @Step("Проверка текста сообщения")
+    public static void checkTextMessage(ValidatableResponse response, String expectedMessage) {
+        assertEquals(expectedMessage, response.extract().path("message"));
     }
 
     @Step("Логин курьера")
-    public static void loginCourier() {
+    public static ValidatableResponse loginCourier() {
         // создаём json для логина
         courierLogin = CourierLogin.from(courier);
         // дёргаем ручку логина, чтобы узнать ID, чтобы потом удалить курьера
-        id = courierLoginRest(courierLogin)
-                .assertThat().statusCode(HTTP_OK)
-                .extract().path("id");
-    }
-
-    @Step("Успешный запрос вернул ID")
-    public static void isIdReturned() {
-        assert id > 0;
+        return courierLoginRest(courierLogin);
     }
 
     public static void deleteCourier() {
-        if(id > 0) {
+        if (id > 0) {
             boolean delete = deleteCourierRest(id)
                     .assertThat().statusCode(HTTP_OK)
                     .extract().path("ok");
